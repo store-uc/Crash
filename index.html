@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crash Game</title>
+    <!-- تضمين خط Inter -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- تضمين Tailwind CSS من CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      /* تنسيق الهيدر الثابت */
+      header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+      }
+      /* خلفية متحركة بنمط نجوم */
+      .game-screen {
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      }
+      .stars {
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%;
+        left: -50%;
+        background: transparent url('https://www.transparenttextures.com/patterns/stardust.png');
+        animation: moveStars 30s linear infinite;
+        opacity: 0.2;
+      }
+      @keyframes moveStars {
+        from { transform: translate(0, 0); }
+        to { transform: translate(50%, 50%); }
+      }
+      /* تأثير نبض على المضاعف عند التحديث */
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+      }
+      .pulse {
+        animation: pulse 0.5s ease-in-out;
+      }
+      /* تعديل موقع الطائرة داخل منطقة اللعبة */
+      #planeAnimation {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 80px;
+        height: 80px;
+        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+      }
+      /* حركة الطائرة */
+      .plane-active {
+        animation: fly 10s ease-in-out forwards;
+      }
+      @keyframes fly {
+        from {
+          left: 0;
+          bottom: 0;
+          transform: rotate(0deg);
+        }
+        to {
+          left: calc(100% - 80px);
+          bottom: calc(100% - 80px);
+          transform: rotate(-15deg);
+        }
+      }
+      /* إضافة حركة اهتزازية لصورة الطائرة */
+      #planeAnimation img {
+        animation: vibrate 0.2s infinite;
+      }
+      @keyframes vibrate {
+        0%   { transform: translateY(0); }
+        25%  { transform: translateY(-3px); }
+        50%  { transform: translateY(0); }
+        75%  { transform: translateY(3px); }
+        100% { transform: translateY(0); }
+      }
+      /* تنسيق رسالة الكاش آوت/الإشعارات لتظهر في منتصف الشاشة */
+      .popup-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        color: #22c55e;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+        z-index: 50;
+      }
+      .popup-show {
+        opacity: 1;
+      }
+      /* تنسيق النافذة المنبثقة */
+      #modalOverlay {
+        transition: opacity 0.3s ease;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen flex flex-col bg-black text-white relative overflow-hidden pt-20">
+    <!-- هيدر ثابت يحتوي على الشعار على اليسار والرصيد على اليمين -->
+    <header class="bg-gray-800 bg-opacity-95 border-b border-gray-700 p-4 flex justify-between items-center">
+      <!-- الشعار على اليسار -->
+      <div class="flex items-center">
+        <span class="text-2xl font-bold text-white">Aviator</span>
+      </div>
+      <!-- الرصيد على اليمين مع زر الإيداع -->
+      <div class="flex items-center gap-3">
+        <span id="walletBalance" class="text-green-400 font-semibold">100.00 EGP</span>
+        <!-- زر الإيداع -->
+        <button
+          id="depositBtn"
+          class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-bold"
+          title="إيداع"
+        >
+          +
+        </button>
+      </div>
+    </header>
+
+    <!-- شاشة اللعبة مع تأثير الخلفية -->
+    <div class="game-screen flex-1 relative flex flex-col justify-center items-center p-6">
+      <div class="stars"></div>
+      <!-- المؤقت يظهر أثناء فترة التهدئة -->
+      <div id="timerDisplay" class="absolute top-4 right-4 text-4xl font-extrabold text-red-400 drop-shadow-lg"></div>
+      <!-- عرض المضاعف -->
+      <div class="relative z-10 flex flex-col items-center">
+        <h2 id="multiplierDisplay" class="text-6xl md:text-7xl font-extrabold drop-shadow-2xl mb-4">1.00x</h2>
+      </div>
+      <!-- الطائرة المتحركة داخل منطقة اللعبة -->
+      <div id="planeAnimation" class="z-10">
+        <img
+          src="/images/airplane.png"
+          alt="صورة الطائرة"
+          class="w-full h-full drop-shadow-xl"
+        />
+      </div>
+    </div>
+
+    <!-- قسم التحكم في الرهان -->
+    <div class="p-4 bg-gray-800 bg-opacity-95 border-t border-gray-700">
+      <h3 class="text-xl font-semibold text-center mb-3">Place Your Bet</h3>
+      <div class="max-w-sm mx-auto">
+        <div class="mb-3">
+          <label class="block text-gray-300 text-xs mb-1" for="betInput">
+            Bet Amount (EGP)
+          </label>
+          <input
+            type="number"
+            id="betInput"
+            class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            value="10"
+          />
+        </div>
+        <!-- أزرار الرهان الأساسية -->
+        <div class="flex gap-3 justify-center mb-4">
+          <button
+            id="placeBetBtn"
+            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-green-600 hover:bg-green-700 text-sm"
+          >
+            Place Bet
+          </button>
+          <button
+            id="cashOutBtn"
+            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-sm"
+          >
+            Cash Out 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="ml-1 h-4 w-4 inline"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 8c-3.86 0-7 1.79-7 4s3.14 4 7 4 7-1.79 7-4-3.14-4-7-4z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 4v4m0 8v4"
+              />
+            </svg>
+          </button>
+        </div>
+        <!-- أزرار الأحكام والشروط وسياسة الخصوصية -->
+        <div class="flex gap-3 justify-center">
+          <button
+            id="termsBtn"
+            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm"
+          >
+            الأحكام والشروط
+          </button>
+          <button
+            id="privacyBtn"
+            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm"
+          >
+            سياسة الخصوصية
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- رسالة الكاش آوت/الإشعارات -->
+    <div id="popupMessage" class="popup-message"></div>
+
+    <!-- نافذة منبثقة (Modal) للأحكام والشروط/سياسة الخصوصية -->
+    <div id="modalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+      <div class="bg-[rgb(29,27,45)] text-white rounded-lg max-w-lg w-full p-6 relative">
+        <!-- زر الإغلاق -->
+        <button id="closeModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
+        <!-- عنوان المحتوى -->
+        <h3 id="modalTitle" class="text-2xl font-bold mb-4"></h3>
+        <!-- محتوى النافذة -->
+        <div id="modalContent" class="text-sm leading-relaxed overflow-y-auto max-h-80">
+          <!-- يمكن وضع محتوى مفصل هنا -->
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة منبثقة (Modal) للإيداع -->
+    <div
+      id="depositModalOverlay"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50"
+    >
+      <div class="bg-[rgb(29,27,45)] text-white rounded-lg max-w-lg w-full p-6 relative">
+        <!-- زر الإغلاق -->
+        <button id="closeDepositModalBtn" class="absolute top-2 right-2 text-xl">
+          &times;
+        </button>
+
+        <!-- صورة في المنتصف -->
+        <div class="flex justify-center mb-4">
+          <img
+            src="/images/vodafone-cash-logo.png"
+            alt="Deposit Image"
+            class="w-56 h-24"
+          />
+        </div>
+
+        <!-- جعل النصوص من اليمين لليسار -->
+        <div dir="rtl" class="text-right text-sm leading-relaxed overflow-y-auto max-h-96">
+          <!-- إضافة العبارة المطلوبة -->
+          <p class="mb-4 text-gray-300">
+            قبل تأكيد الطلب، برجى تحويل الأموال في غضون 10 دقائق باستخدام معلومات الدفع المحددة أدناه.
+          </p>
+
+          <!-- رقم فودافون كاش مع أيقونة النسخ -->
+          <div class="flex items-center mb-4">
+            <span class="text-gray-300 font-bold text-lg">
+              رقم فودافون كاش: 01070817647
+            </span>
+            <button id="copyPhoneBtn" title="نسخ الرقم" class="ml-2 focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2" />
+                <rect x="8" y="8" width="8" height="8" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- خانة الرقم الذي تم التحويل منه -->
+          <div class="mb-4">
+            <label for="transferredNumber" class="block text-gray-300 mb-1">
+              الرقم الذي تم التحويل منه
+            </label>
+            <input
+              type="text"
+              id="transferredNumber"
+              class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="أدخل الرقم الذي تم التحويل منه"
+            />
+          </div>
+
+          <!-- المبلغ المطلوب إيداعه -->
+          <label for="depositAmount" class="block mb-1 text-gray-300">
+            المبلغ
+          </label>
+          <input
+            type="number"
+            id="depositAmount"
+            class="w-full p-2 mb-4 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="450.00"
+          />
+          <p class="mb-2 text-sm text-gray-400">
+            الحد الأدنى للإيداع EGP 450.00 
+          </p>
+
+          <!-- حقل رفع صورة السكيرين شوت -->
+          <div class="mb-4">
+            <label for="transferScreenshot" class="block text-gray-300 mb-1">
+              سكرين شوت للتحويل
+            </label>
+            <input
+              type="file"
+              id="transferScreenshot"
+              accept="image/*"
+              class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none"
+            />
+          </div>
+
+          <!-- زر التأكيد في المنتصف -->
+          <div class="flex justify-center">
+            <button
+              id="confirmDepositBtn"
+              class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold"
+            >
+              تأكيد
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // إعداد المتغيرات للعبة
+      const explosionMin = 1;  // المضاعف الأدنى للانفجار
+      const explosionMax = 30; // المضاعف الأعلى للانفجار
+
+      let multiplier = 1.0;
+      let isRoundActive = true;
+      let timer = 5;
+      let betAmount = 10;
+      let hasPlacedBet = false;
+      let crashMultiplier = 1;
+
+      let multiplierInterval, cooldownInterval, cooldownTimeout, popupTimeout;
+
+      // إعداد رصيد المحفظة التجريبية باستخدام localStorage
+      let walletBalance = localStorage.getItem("walletBalance")
+        ? parseFloat(localStorage.getItem("walletBalance"))
+        : 100.00; // رصيد مبدئي 100 EGP
+
+      // دالة لتحديث عرض الرصيد
+      function updateWalletDisplay() {
+        document.getElementById("walletBalance").innerText = walletBalance.toFixed(2) + " EGP";
+      }
+
+      // تحديث حالة الأزرار بناءً على حالة الجولة
+      function updateButtonStates() {
+        placeBetBtn.disabled = isRoundActive || hasPlacedBet;
+        placeBetBtn.classList.toggle("bg-gray-600", isRoundActive || hasPlacedBet);
+        placeBetBtn.classList.toggle("cursor-not-allowed", isRoundActive || hasPlacedBet);
+
+        cashOutBtn.disabled = !isRoundActive || !hasPlacedBet;
+        cashOutBtn.classList.toggle("bg-gray-600", !isRoundActive || !hasPlacedBet);
+        cashOutBtn.classList.toggle("cursor-not-allowed", !isRoundActive || !hasPlacedBet);
+      }
+
+      // بدء جولة اللعبة
+      function startRound() {
+        isRoundActive = true;
+        multiplier = 1.0;
+        multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
+        multiplierDisplay.classList.add("pulse");
+        setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
+
+        // إعادة تعيين موقع الطائرة في كل جولة
+        planeAnimation.classList.remove("plane-active");
+        void planeAnimation.offsetWidth; // لإعادة تشغيل الـ animation
+        planeAnimation.classList.add("plane-active");
+
+        // حساب نقطة الانفجار بشكل عشوائي
+        crashMultiplier = parseFloat(
+          (Math.random() * (explosionMax - explosionMin) + explosionMin).toFixed(2)
+        );
+
+        // زيادة المضاعف تدريجيًا
+        multiplierInterval = setInterval(() => {
+          multiplier += 0.03;
+          multiplier = parseFloat(multiplier.toFixed(2));
+          multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
+          multiplierDisplay.classList.add("pulse");
+          setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
+
+          // التحقق من الوصول لنقطة الانفجار
+          if (multiplier >= crashMultiplier) {
+            clearInterval(multiplierInterval);
+            isRoundActive = false;
+            if (hasPlacedBet) {
+              showPopup("حظ اوفر المره القادمه", true);
+            }
+            hasPlacedBet = false;
+            updateButtonStates();
+            planeAnimation.classList.remove("plane-active");
+            startCooldown();
+          }
+        }, 100);
+
+        updateButtonStates();
+      }
+
+      // بدء فترة التهدئة لمدة 5 ثواني
+      function startCooldown() {
+        timer = 5;
+        timerDisplay.innerText = timer;
+        cooldownInterval = setInterval(() => {
+          if (timer > 0) {
+            timer--;
+            timerDisplay.innerText = timer;
+          }
+        }, 1000);
+
+        cooldownTimeout = setTimeout(() => {
+          clearInterval(cooldownInterval);
+          timerDisplay.innerText = "";
+          startRound();
+        }, 5000);
+      }
+
+      // إظهار رسالة الكاش آوت/الإشعارات في منتصف الشاشة
+      function showPopup(message, isError = false) {
+        popupMessage.innerText = message;
+        popupMessage.style.color = isError ? "red" : "#22c55e";
+        popupMessage.classList.add("popup-show");
+        clearTimeout(popupTimeout);
+        popupTimeout = setTimeout(() => {
+          popupMessage.classList.remove("popup-show");
+        }, 3000);
+      }
+
+      // الحصول على العناصر من DOM
+      const multiplierDisplay = document.getElementById("multiplierDisplay");
+      const timerDisplay = document.getElementById("timerDisplay");
+      const placeBetBtn = document.getElementById("placeBetBtn");
+      const cashOutBtn = document.getElementById("cashOutBtn");
+      const betInput = document.getElementById("betInput");
+      const planeAnimation = document.getElementById("planeAnimation");
+      const popupMessage = document.getElementById("popupMessage");
+
+      // حدث زر Place Bet
+      placeBetBtn.addEventListener("click", () => {
+        if (!isRoundActive) {
+          // خصم مبلغ الرهان من المحفظة عند وضع الرهان
+          betAmount = Number(betInput.value);
+          if (walletBalance < betAmount) {
+            showPopup("رصيد غير كافٍ", true);
+            return;
+          }
+          walletBalance -= betAmount;
+          localStorage.setItem("walletBalance", walletBalance);
+          updateWalletDisplay();
+
+          hasPlacedBet = true;
+          updateButtonStates();
+          showPopup("تم وضع الرهان");
+        }
+      });
+
+      // حدث زر Cash Out
+      cashOutBtn.addEventListener("click", () => {
+        if (isRoundActive && hasPlacedBet) {
+          betAmount = Number(betInput.value);
+          const winAmount = (betAmount * multiplier).toFixed(2);
+          walletBalance += parseFloat(winAmount);
+          localStorage.setItem("walletBalance", walletBalance);
+          updateWalletDisplay();
+          showPopup(`لقد فزت بمبلغ ${winAmount} EGP!`);
+          hasPlacedBet = false;
+          updateButtonStates();
+        }
+      });
+
+      // تحديث قيمة الرهان عند تغييره
+      betInput.addEventListener("change", (e) => {
+        betAmount = Number(e.target.value);
+      });
+
+      // إدارة النافذة المنبثقة (Modal) للأحكام والشروط/سياسة الخصوصية
+      const modalOverlay = document.getElementById("modalOverlay");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalContent = document.getElementById("modalContent");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+
+      // محتوى الأحكام والشروط وسياسة الخصوصية (مثال)
+      const termsContent = `الأحكام والشروط...`;
+      const privacyContent = `سياسة الخصوصية...`;
+
+      function openModal(title, content) {
+        modalTitle.innerHTML = title;
+        modalContent.innerHTML = content;
+        modalOverlay.classList.remove("hidden");
+      }
+
+      closeModalBtn.addEventListener("click", () => {
+        modalOverlay.classList.add("hidden");
+      });
+
+      document.getElementById("termsBtn").addEventListener("click", () => {
+        openModal("الأحكام والشروط", termsContent);
+      });
+
+      document.getElementById("privacyBtn").addEventListener("click", () => {
+        openModal("سياسة الخصوصية", privacyContent);
+      });
+
+      modalOverlay.addEventListener("click", (e) => {
+        if (e.target === modalOverlay) {
+          modalOverlay.classList.add("hidden");
+        }
+      });
+
+      // إدارة النافذة المنبثقة (Modal) للإيداع
+      const depositBtn = document.getElementById("depositBtn");
+      const depositModalOverlay = document.getElementById("depositModalOverlay");
+      const closeDepositModalBtn = document.getElementById("closeDepositModalBtn");
+      const confirmDepositBtn = document.getElementById("confirmDepositBtn");
+      const depositAmountInput = document.getElementById("depositAmount");
+
+      // فتح النافذة عند النقر على زر الإيداع
+      depositBtn.addEventListener("click", () => {
+        depositModalOverlay.classList.remove("hidden");
+      });
+
+      // إغلاق النافذة عند النقر على زر الإغلاق
+      closeDepositModalBtn.addEventListener("click", () => {
+        depositModalOverlay.classList.add("hidden");
+      });
+
+      // إغلاق النافذة عند النقر خارج محتواها
+      depositModalOverlay.addEventListener("click", (e) => {
+        if (e.target === depositModalOverlay) {
+          depositModalOverlay.classList.add("hidden");
+        }
+      });
+
+      // وظيفة نسخ الرقم إلى الحافظة
+      document.getElementById("copyPhoneBtn").addEventListener("click", () => {
+        const phoneNumber = "01070817647";
+        navigator.clipboard.writeText(phoneNumber).then(() => {
+          showPopup("تم نسخ الرقم!");
+        }).catch(() => {
+          showPopup("حدث خطأ أثناء النسخ", true);
+        });
+      });
+
+      // وظيفة تأكيد عملية الإيداع وإرسال البيانات إلى بوت التلجرام
+      confirmDepositBtn.addEventListener("click", () => {
+        const depositValue = parseFloat(depositAmountInput.value);
+        const transferredNumber = document.getElementById("transferredNumber").value.trim();
+        const screenshotInput = document.getElementById("transferScreenshot");
+
+        // التحقق من صحة البيانات (يجب أن تكون جميع الحقول مدخلة وصحيحة)
+        if (
+          isNaN(depositValue) ||
+          depositValue < 450 ||
+          !transferredNumber ||
+          screenshotInput.files.length === 0
+        ) {
+          showPopup("الرجاء إدخال بيانات صحيحة وكاملة للإيداع", true);
+          return;
+        }
+
+        // إرسال البيانات إلى بوت التلجرام
+        const telegramUrl = "https://api.telegram.org/botYOUR_BOT_TOKEN/sendPhoto";
+        const formData = new FormData();
+        formData.append("chat_id", "YOUR_CHAT_ID");
+        formData.append("photo", screenshotInput.files[0]);
+        const captionText = `إيداع:
+رقم فودافون كاش: 01070817647
+الرقم الذي تم التحويل منه: ${transferredNumber}
+المبلغ: ${depositValue} EGP`;
+        formData.append("caption", captionText);
+
+        fetch(telegramUrl, {
+          method: "POST",
+          body: formData
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log(data);
+          })
+          .catch(error => {
+            console.error(error);
+          });
+
+        // إظهار نافذة منبثقة تفيد بأنه تم انشاء طلب الإيداع بنجاح
+        showPopup("تم انشاء طلب الايداع بنجاح");
+
+        // إغلاق النافذة بعد الإيداع
+        depositModalOverlay.classList.add("hidden");
+
+        // بعد 3 دقائق يتم إضافة المبلغ إلى الرصيد
+        setTimeout(() => {
+          walletBalance += depositValue;
+          localStorage.setItem("walletBalance", walletBalance);
+          updateWalletDisplay();
+          showPopup("تم إرسال الأموال إلى حسابك");
+        }, 180000); // 180000 مللي ثانية = 3 دقائق
+      });
+
+      // بدء الجولة عند تحميل الصفحة مع تحديث عرض الرصيد
+      window.onload = () => {
+        updateWalletDisplay();
+        updateButtonStates();
+        startRound();
+      };
+    </script>
+  </body>
+</html>
