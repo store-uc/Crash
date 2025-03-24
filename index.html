@@ -271,9 +271,10 @@
       let multiplierInterval, cooldownInterval, cooldownTimeout, popupTimeout;
 
       // إعداد رصيد المحفظة من localStorage (الرصيد المبدئي كما هو موجود)
-      let walletBalance = localStorage.getItem("walletBalance")
-        ? parseFloat(localStorage.getItem("walletBalance"))
-        : 100.00;
+let walletBalance = localStorage.getItem("walletBalance")
+  ? parseFloat(localStorage.getItem("walletBalance"))
+  : 0.00;
+
 
       function updateWalletDisplay() {
         document.getElementById("walletBalance").innerText = walletBalance.toFixed(2) + " EGP";
