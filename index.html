@@ -282,13 +282,24 @@ let walletBalance = localStorage.getItem("walletBalance")
 
       // دالة إضافة سجل المعاملات
       function addTransactionLog(type, amount) {
-        const logContainer = document.getElementById("transactionLog");
-        const timestamp = new Date().toLocaleTimeString("ar-EG", { hour12: false });
-        const logEntry = document.createElement("div");
-        logEntry.className = "mb-2 text-sm text-gray-300";
-        logEntry.innerText = `[${timestamp}] ${type}: ${amount} EGP`;
-        logContainer.prepend(logEntry);
-      }
+  const logContainer = document.getElementById("transactionLog");
+  const timestamp = new Date().toLocaleTimeString("ar-EG", { hour12: false });
+  const logEntry = document.createElement("div");
+  logEntry.className = "mb-2 text-sm";
+
+  // تغيير اللون حسب نوع العملية
+  if (type === "إيداع") {
+    logEntry.classList.add("text-green-400");
+  } else if (type === "سحب") {
+    logEntry.classList.add("text-red-400");
+  } else {
+    logEntry.classList.add("text-gray-300");
+  }
+
+  logEntry.innerText = `[${timestamp}] ${type}: ${amount} EGP`;
+  logContainer.prepend(logEntry);
+}
+
 
       // تحديث حالة الأزرار
       function updateButtonStates() {
