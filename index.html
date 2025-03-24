@@ -6,7 +6,7 @@
     <title>Crash Game</title>
     <!-- تضمين خط Inter -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap"
       rel="stylesheet"
     />
     <!-- تضمين Tailwind CSS من CDN -->
@@ -43,7 +43,7 @@
         from { transform: translate(0, 0); }
         to { transform: translate(50%, 50%); }
       }
-      /* تأثير نبض على المضاعف عند التحديث */
+      /* تأثير نبض على المضاعف */
       @keyframes pulse {
         0% { transform: scale(1); }
         50% { transform: scale(1.1); }
@@ -52,16 +52,15 @@
       .pulse {
         animation: pulse 0.5s ease-in-out;
       }
-      /* تعديل موقع الطائرة داخل منطقة اللعبة */
+      /* موقع الطائرة وحركتها */
       #planeAnimation {
         position: absolute;
         left: 0;
         bottom: 0;
         width: 80px;
         height: 80px;
-        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+        filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
       }
-      /* حركة الطائرة */
       .plane-active {
         animation: fly 10s ease-in-out forwards;
       }
@@ -77,7 +76,7 @@
           transform: rotate(-15deg);
         }
       }
-      /* إضافة حركة اهتزازية لصورة الطائرة */
+      /* اهتزاز الطائرة */
       #planeAnimation img {
         animation: vibrate 0.2s infinite;
       }
@@ -88,7 +87,7 @@
         75%  { transform: translateY(3px); }
         100% { transform: translateY(0); }
       }
-      /* تنسيق رسالة الكاش آوت/الإشعارات لتظهر في منتصف الشاشة */
+      /* رسالة الإشعارات */
       .popup-message {
         position: fixed;
         top: 50%;
@@ -99,54 +98,48 @@
         opacity: 0;
         transition: opacity 0.5s ease;
         pointer-events: none;
-        z-index: 50;
+        z-index: 100;
       }
       .popup-show {
         opacity: 1;
       }
-      /* تنسيق النافذة المنبثقة */
-      #modalOverlay {
+      /* تنسيق النوافذ المنبثقة */
+      .modal-overlay {
         transition: opacity 0.3s ease;
       }
     </style>
   </head>
   <body class="min-h-screen flex flex-col bg-black text-white relative overflow-hidden pt-20">
-    <!-- هيدر ثابت يحتوي على الشعار على اليسار والرصيد على اليمين -->
+    <!-- الهيدر -->
     <header class="bg-gray-800 bg-opacity-95 border-b border-gray-700 p-4 flex justify-between items-center">
-      <!-- الشعار على اليسار -->
       <div class="flex items-center">
         <span class="text-2xl font-bold text-white">Aviator</span>
       </div>
-      <!-- الرصيد على اليمين مع زر الإيداع -->
+      <!-- قسم المعلومات: الرصيد، سجل المعاملات، الإيداع والسحب -->
       <div class="flex items-center gap-3">
         <span id="walletBalance" class="text-green-400 font-semibold">100.00 EGP</span>
-        <!-- زر الإيداع -->
-        <button
-          id="depositBtn"
-          class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-bold"
-          title="إيداع"
-        >
-          +
+        <!-- زر سجل المعاملات (أيقونة ساعة) -->
+        <button id="transactionLogBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md" title="سجل المعاملات">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </button>
+        <!-- زر الإيداع (لون أخضر) -->
+        <button id="depositBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-bold" title="إيداع">+</button>
+        <!-- زر السحب (لون أحمر) -->
+        <button id="withdrawBtn" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm font-bold" title="سحب الأموال">&#8722;</button>
       </div>
     </header>
 
-    <!-- شاشة اللعبة مع تأثير الخلفية -->
+    <!-- شاشة اللعبة -->
     <div class="game-screen flex-1 relative flex flex-col justify-center items-center p-6">
       <div class="stars"></div>
-      <!-- المؤقت يظهر أثناء فترة التهدئة -->
       <div id="timerDisplay" class="absolute top-4 right-4 text-4xl font-extrabold text-red-400 drop-shadow-lg"></div>
-      <!-- عرض المضاعف -->
       <div class="relative z-10 flex flex-col items-center">
         <h2 id="multiplierDisplay" class="text-6xl md:text-7xl font-extrabold drop-shadow-2xl mb-4">1.00x</h2>
       </div>
-      <!-- الطائرة المتحركة داخل منطقة اللعبة -->
       <div id="planeAnimation" class="z-10">
-        <img
-          src="/images/airplane.png"
-          alt="صورة الطائرة"
-          class="w-full h-full drop-shadow-xl"
-        />
+        <img src="/images/airplane.png" alt="صورة الطائرة" class="w-full h-full drop-shadow-xl" />
       </div>
     </div>
 
@@ -155,117 +148,54 @@
       <h3 class="text-xl font-semibold text-center mb-3">Place Your Bet</h3>
       <div class="max-w-sm mx-auto">
         <div class="mb-3">
-          <label class="block text-gray-300 text-xs mb-1" for="betInput">
-            Bet Amount (EGP)
-          </label>
-          <input
-            type="number"
-            id="betInput"
-            class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            value="10"
-          />
+          <label for="betInput" class="block text-gray-300 text-xs mb-1">Bet Amount (EGP)</label>
+          <input type="number" id="betInput" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value="10" />
         </div>
-        <!-- أزرار الرهان الأساسية -->
         <div class="flex gap-3 justify-center mb-4">
-          <button
-            id="placeBetBtn"
-            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-green-600 hover:bg-green-700 text-sm"
-          >
+          <button id="placeBetBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-green-600 hover:bg-green-700 text-sm">
             Place Bet
           </button>
-          <button
-            id="cashOutBtn"
-            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-sm"
-          >
+          <button id="cashOutBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-sm">
             Cash Out 
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="ml-1 h-4 w-4 inline"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 8c-3.86 0-7 1.79-7 4s3.14 4 7 4 7-1.79 7-4-3.14-4-7-4z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 4v4m0 8v4"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" class="ml-1 h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-3.86 0-7 1.79-7 4s3.14 4 7 4 7-1.79 7-4-3.14-4-7-4z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v4m0 8v4" />
             </svg>
           </button>
         </div>
-        <!-- أزرار الأحكام والشروط وسياسة الخصوصية -->
         <div class="flex gap-3 justify-center">
-          <button
-            id="termsBtn"
-            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm"
-          >
+          <button id="termsBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm">
             الأحكام والشروط
           </button>
-          <button
-            id="privacyBtn"
-            class="w-full sm:w-auto px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm"
-          >
+          <button id="privacyBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm">
             سياسة الخصوصية
           </button>
         </div>
       </div>
     </div>
 
-    <!-- رسالة الكاش آوت/الإشعارات -->
-    <div id="popupMessage" class="popup-message"></div>
-
-    <!-- نافذة منبثقة (Modal) للأحكام والشروط/سياسة الخصوصية -->
-    <div id="modalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
-      <div class="bg-[rgb(29,27,45)] text-white rounded-lg max-w-lg w-full p-6 relative">
-        <!-- زر الإغلاق -->
-        <button id="closeModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
-        <!-- عنوان المحتوى -->
-        <h3 id="modalTitle" class="text-2xl font-bold mb-4"></h3>
-        <!-- محتوى النافذة -->
-        <div id="modalContent" class="text-sm leading-relaxed overflow-y-auto max-h-80">
-          <!-- يمكن وضع محتوى مفصل هنا -->
-        </div>
+    <!-- نافذة سجل المعاملات -->
+    <div id="transactionModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
+      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
+        <button id="closeTransactionModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
+        <h3 class="text-2xl font-bold mb-4 text-center">سجل المعاملات</h3>
+        <div id="transactionLog" class="max-h-80 overflow-y-auto"></div>
       </div>
     </div>
 
-    <!-- نافذة منبثقة (Modal) للإيداع -->
-    <div
-      id="depositModalOverlay"
-      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50"
-    >
-      <div class="bg-[rgb(29,27,45)] text-white rounded-lg max-w-lg w-full p-6 relative">
-        <!-- زر الإغلاق -->
-        <button id="closeDepositModalBtn" class="absolute top-2 right-2 text-xl">
-          &times;
-        </button>
-
-        <!-- صورة في المنتصف -->
+    <!-- نافذة الإيداع -->
+    <div id="depositModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
+      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
+        <button id="closeDepositModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
         <div class="flex justify-center mb-4">
-          <img
-            src="/images/vodafone-cash-logo.png"
-            alt="Deposit Image"
-            class="w-56 h-24"
-          />
+          <img src="/images/vodafone-cash-logo.png" alt="Deposit Image" class="w-56 h-24" />
         </div>
-
-        <!-- جعل النصوص من اليمين لليسار -->
-        <div dir="rtl" class="text-right text-sm leading-relaxed overflow-y-auto max-h-96">
-          <!-- إضافة العبارة المطلوبة -->
+        <div dir="rtl" class="text-right text-sm overflow-y-auto max-h-96">
           <p class="mb-4 text-gray-300">
             قبل تأكيد الطلب، برجى تحويل الأموال في غضون 10 دقائق باستخدام معلومات الدفع المحددة أدناه.
           </p>
-
-          <!-- رقم فودافون كاش مع أيقونة النسخ -->
           <div class="flex items-center mb-4">
-            <span class="text-gray-300 font-bold text-lg">
-              رقم فودافون كاش: 01070817647
-            </span>
+            <span class="text-gray-300 font-bold text-lg">رقم فودافون كاش: 01070817647</span>
             <button id="copyPhoneBtn" title="نسخ الرقم" class="ml-2 focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2" />
@@ -273,53 +203,19 @@
               </svg>
             </button>
           </div>
-
-          <!-- خانة الرقم الذي تم التحويل منه -->
           <div class="mb-4">
-            <label for="transferredNumber" class="block text-gray-300 mb-1">
-              الرقم الذي تم التحويل منه
-            </label>
-            <input
-              type="text"
-              id="transferredNumber"
-              class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="أدخل الرقم الذي تم التحويل منه"
-            />
+            <label for="transferredNumber" class="block text-gray-300 mb-1">الرقم الذي تم التحويل منه</label>
+            <input type="text" id="transferredNumber" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="أدخل الرقم" />
           </div>
-
-          <!-- المبلغ المطلوب إيداعه -->
-          <label for="depositAmount" class="block mb-1 text-gray-300">
-            المبلغ
-          </label>
-          <input
-            type="number"
-            id="depositAmount"
-            class="w-full p-2 mb-4 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="450.00"
-          />
-          <p class="mb-2 text-sm text-gray-400">
-            الحد الأدنى للإيداع EGP 450.00 
-          </p>
-
-          <!-- حقل رفع صورة السكيرين شوت -->
+          <label for="depositAmount" class="block mb-1 text-gray-300">المبلغ</label>
+          <input type="number" id="depositAmount" class="w-full p-2 mb-4 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="450.00" />
+          <p class="mb-2 text-sm text-gray-400">الحد الأدنى للإيداع EGP 450.00</p>
           <div class="mb-4">
-            <label for="transferScreenshot" class="block text-gray-300 mb-1">
-              سكرين شوت للتحويل
-            </label>
-            <input
-              type="file"
-              id="transferScreenshot"
-              accept="image/*"
-              class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none"
-            />
+            <label for="transferScreenshot" class="block text-gray-300 mb-1">سكرين شوت للتحويل</label>
+            <input type="file" id="transferScreenshot" accept="image/*" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" />
           </div>
-
-          <!-- زر التأكيد في المنتصف -->
           <div class="flex justify-center">
-            <button
-              id="confirmDepositBtn"
-              class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold"
-            >
+            <button id="confirmDepositBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
               تأكيد
             </button>
           </div>
@@ -327,36 +223,77 @@
       </div>
     </div>
 
-    <script>
-      // إعداد المتغيرات للعبة
-      const explosionMin = 1;  // المضاعف الأدنى للانفجار
-      const explosionMax = 30; // المضاعف الأعلى للانفجار
+    <!-- نافذة السحب -->
+    <div id="withdrawModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
+      <div class="bg-gray-800 text-white rounded-lg max-w-md w-full p-6 relative">
+        <button id="closeWithdrawModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
+        <h3 class="text-2xl font-bold mb-4 text-center">سحب الأموال</h3>
+        <div dir="rtl" class="text-right text-sm">
+          <div class="mb-4">
+            <label for="withdrawPhone" class="block text-gray-300 mb-1">رقم الهاتف</label>
+            <input type="text" id="withdrawPhone" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="أدخل رقم الهاتف" />
+          </div>
+          <div class="mb-4">
+            <label for="withdrawAmount" class="block text-gray-300 mb-1">المبلغ</label>
+            <input type="number" id="withdrawAmount" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="المبلغ" />
+          </div>
+          <div class="flex justify-center">
+            <button id="confirmWithdrawBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">
+              تأكيد السحب
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- نافذة الأحكام والشروط/سياسة الخصوصية -->
+    <div id="modalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
+      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
+        <button id="closeModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
+        <h3 id="modalTitle" class="text-2xl font-bold mb-4"></h3>
+        <div id="modalContent" class="text-sm overflow-y-auto max-h-80"></div>
+      </div>
+    </div>
+
+    <!-- رسالة الإشعارات -->
+    <div id="popupMessage" class="popup-message"></div>
+
+    <script>
+      // إعداد متغيرات اللعبة
+      const explosionMin = 1;
+      const explosionMax = 30;
       let multiplier = 1.0;
       let isRoundActive = true;
       let timer = 5;
       let betAmount = 10;
       let hasPlacedBet = false;
       let crashMultiplier = 1;
-
       let multiplierInterval, cooldownInterval, cooldownTimeout, popupTimeout;
 
-      // إعداد رصيد المحفظة التجريبية باستخدام localStorage
+      // إعداد رصيد المحفظة من localStorage (الرصيد المبدئي كما هو موجود)
       let walletBalance = localStorage.getItem("walletBalance")
         ? parseFloat(localStorage.getItem("walletBalance"))
-        : 100.00; // رصيد مبدئي 100 EGP
+        : 100.00;
 
-      // دالة لتحديث عرض الرصيد
       function updateWalletDisplay() {
         document.getElementById("walletBalance").innerText = walletBalance.toFixed(2) + " EGP";
       }
 
-      // تحديث حالة الأزرار بناءً على حالة الجولة
+      // دالة إضافة سجل المعاملات
+      function addTransactionLog(type, amount) {
+        const logContainer = document.getElementById("transactionLog");
+        const timestamp = new Date().toLocaleTimeString("ar-EG", { hour12: false });
+        const logEntry = document.createElement("div");
+        logEntry.className = "mb-2 text-sm text-gray-300";
+        logEntry.innerText = `[${timestamp}] ${type}: ${amount} EGP`;
+        logContainer.prepend(logEntry);
+      }
+
+      // تحديث حالة الأزرار
       function updateButtonStates() {
         placeBetBtn.disabled = isRoundActive || hasPlacedBet;
         placeBetBtn.classList.toggle("bg-gray-600", isRoundActive || hasPlacedBet);
         placeBetBtn.classList.toggle("cursor-not-allowed", isRoundActive || hasPlacedBet);
-
         cashOutBtn.disabled = !isRoundActive || !hasPlacedBet;
         cashOutBtn.classList.toggle("bg-gray-600", !isRoundActive || !hasPlacedBet);
         cashOutBtn.classList.toggle("cursor-not-allowed", !isRoundActive || !hasPlacedBet);
@@ -369,31 +306,21 @@
         multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
         multiplierDisplay.classList.add("pulse");
         setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
-
-        // إعادة تعيين موقع الطائرة في كل جولة
         planeAnimation.classList.remove("plane-active");
-        void planeAnimation.offsetWidth; // لإعادة تشغيل الـ animation
+        void planeAnimation.offsetWidth;
         planeAnimation.classList.add("plane-active");
-
-        // حساب نقطة الانفجار بشكل عشوائي
-        crashMultiplier = parseFloat(
-          (Math.random() * (explosionMax - explosionMin) + explosionMin).toFixed(2)
-        );
-
-        // زيادة المضاعف تدريجيًا
+        crashMultiplier = parseFloat((Math.random() * (explosionMax - explosionMin) + explosionMin).toFixed(2));
         multiplierInterval = setInterval(() => {
           multiplier += 0.03;
           multiplier = parseFloat(multiplier.toFixed(2));
           multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
           multiplierDisplay.classList.add("pulse");
           setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
-
-          // التحقق من الوصول لنقطة الانفجار
           if (multiplier >= crashMultiplier) {
             clearInterval(multiplierInterval);
             isRoundActive = false;
             if (hasPlacedBet) {
-              showPopup("حظ اوفر المره القادمه", true);
+              showPopup("حظ أوفر المرة القادمة", true);
             }
             hasPlacedBet = false;
             updateButtonStates();
@@ -401,11 +328,10 @@
             startCooldown();
           }
         }, 100);
-
         updateButtonStates();
       }
 
-      // بدء فترة التهدئة لمدة 5 ثواني
+      // فترة التهدئة
       function startCooldown() {
         timer = 5;
         timerDisplay.innerText = timer;
@@ -415,7 +341,6 @@
             timerDisplay.innerText = timer;
           }
         }, 1000);
-
         cooldownTimeout = setTimeout(() => {
           clearInterval(cooldownInterval);
           timerDisplay.innerText = "";
@@ -423,18 +348,16 @@
         }, 5000);
       }
 
-      // إظهار رسالة الكاش آوت/الإشعارات في منتصف الشاشة
+      // عرض رسالة الإشعارات
       function showPopup(message, isError = false) {
         popupMessage.innerText = message;
         popupMessage.style.color = isError ? "red" : "#22c55e";
         popupMessage.classList.add("popup-show");
         clearTimeout(popupTimeout);
-        popupTimeout = setTimeout(() => {
-          popupMessage.classList.remove("popup-show");
-        }, 3000);
+        popupTimeout = setTimeout(() => popupMessage.classList.remove("popup-show"), 3000);
       }
 
-      // الحصول على العناصر من DOM
+      // عناصر DOM
       const multiplierDisplay = document.getElementById("multiplierDisplay");
       const timerDisplay = document.getElementById("timerDisplay");
       const placeBetBtn = document.getElementById("placeBetBtn");
@@ -443,10 +366,9 @@
       const planeAnimation = document.getElementById("planeAnimation");
       const popupMessage = document.getElementById("popupMessage");
 
-      // حدث زر Place Bet
+      // حدث زر وضع الرهان
       placeBetBtn.addEventListener("click", () => {
         if (!isRoundActive) {
-          // خصم مبلغ الرهان من المحفظة عند وضع الرهان
           betAmount = Number(betInput.value);
           if (walletBalance < betAmount) {
             showPopup("رصيد غير كافٍ", true);
@@ -455,14 +377,13 @@
           walletBalance -= betAmount;
           localStorage.setItem("walletBalance", walletBalance);
           updateWalletDisplay();
-
           hasPlacedBet = true;
           updateButtonStates();
           showPopup("تم وضع الرهان");
         }
       });
 
-      // حدث زر Cash Out
+      // حدث زر الكاش آوت
       cashOutBtn.addEventListener("click", () => {
         if (isRoundActive && hasPlacedBet) {
           betAmount = Number(betInput.value);
@@ -473,138 +394,116 @@
           showPopup(`لقد فزت بمبلغ ${winAmount} EGP!`);
           hasPlacedBet = false;
           updateButtonStates();
+          addTransactionLog("سحب", winAmount);
         }
       });
 
-      // تحديث قيمة الرهان عند تغييره
       betInput.addEventListener("change", (e) => {
         betAmount = Number(e.target.value);
       });
 
-      // إدارة النافذة المنبثقة (Modal) للأحكام والشروط/سياسة الخصوصية
+      // إدارة نافذة الأحكام والشروط/سياسة الخصوصية
       const modalOverlay = document.getElementById("modalOverlay");
       const modalTitle = document.getElementById("modalTitle");
       const modalContent = document.getElementById("modalContent");
       const closeModalBtn = document.getElementById("closeModalBtn");
-
-      // محتوى الأحكام والشروط وسياسة الخصوصية (مثال)
-      const termsContent = `الأحكام والشروط...`;
-      const privacyContent = `سياسة الخصوصية...`;
-
+      const termsContent = "الأحكام والشروط...";
+      const privacyContent = "سياسة الخصوصية...";
       function openModal(title, content) {
         modalTitle.innerHTML = title;
         modalContent.innerHTML = content;
         modalOverlay.classList.remove("hidden");
       }
+      closeModalBtn.addEventListener("click", () => modalOverlay.classList.add("hidden"));
+      document.getElementById("termsBtn").addEventListener("click", () => openModal("الأحكام والشروط", termsContent));
+      document.getElementById("privacyBtn").addEventListener("click", () => openModal("سياسة الخصوصية", privacyContent));
+      modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) modalOverlay.classList.add("hidden"); });
 
-      closeModalBtn.addEventListener("click", () => {
-        modalOverlay.classList.add("hidden");
-      });
-
-      document.getElementById("termsBtn").addEventListener("click", () => {
-        openModal("الأحكام والشروط", termsContent);
-      });
-
-      document.getElementById("privacyBtn").addEventListener("click", () => {
-        openModal("سياسة الخصوصية", privacyContent);
-      });
-
-      modalOverlay.addEventListener("click", (e) => {
-        if (e.target === modalOverlay) {
-          modalOverlay.classList.add("hidden");
-        }
-      });
-
-      // إدارة النافذة المنبثقة (Modal) للإيداع
+      // إدارة نافذة الإيداع
       const depositBtn = document.getElementById("depositBtn");
       const depositModalOverlay = document.getElementById("depositModalOverlay");
       const closeDepositModalBtn = document.getElementById("closeDepositModalBtn");
       const confirmDepositBtn = document.getElementById("confirmDepositBtn");
-      const depositAmountInput = document.getElementById("depositAmount");
+      depositBtn.addEventListener("click", () => depositModalOverlay.classList.remove("hidden"));
+      closeDepositModalBtn.addEventListener("click", () => depositModalOverlay.classList.add("hidden"));
+      depositModalOverlay.addEventListener("click", (e) => { if (e.target === depositModalOverlay) depositModalOverlay.classList.add("hidden"); });
 
-      // فتح النافذة عند النقر على زر الإيداع
-      depositBtn.addEventListener("click", () => {
-        depositModalOverlay.classList.remove("hidden");
-      });
-
-      // إغلاق النافذة عند النقر على زر الإغلاق
-      closeDepositModalBtn.addEventListener("click", () => {
-        depositModalOverlay.classList.add("hidden");
-      });
-
-      // إغلاق النافذة عند النقر خارج محتواها
-      depositModalOverlay.addEventListener("click", (e) => {
-        if (e.target === depositModalOverlay) {
-          depositModalOverlay.classList.add("hidden");
-        }
-      });
-
-      // وظيفة نسخ الرقم إلى الحافظة
+      // وظيفة نسخ الرقم
       document.getElementById("copyPhoneBtn").addEventListener("click", () => {
         const phoneNumber = "01070817647";
-        navigator.clipboard.writeText(phoneNumber).then(() => {
-          showPopup("تم نسخ الرقم!");
-        }).catch(() => {
-          showPopup("حدث خطأ أثناء النسخ", true);
-        });
+        navigator.clipboard.writeText(phoneNumber)
+          .then(() => showPopup("تم نسخ الرقم!"))
+          .catch(() => showPopup("حدث خطأ أثناء النسخ", true));
       });
 
-      // وظيفة تأكيد عملية الإيداع وإرسال البيانات إلى بوت التلجرام
+      // تأكيد الإيداع (مدة انتظار 10 ثوانٍ)
       confirmDepositBtn.addEventListener("click", () => {
-        const depositValue = parseFloat(depositAmountInput.value);
+        const depositValue = parseFloat(document.getElementById("depositAmount").value);
         const transferredNumber = document.getElementById("transferredNumber").value.trim();
         const screenshotInput = document.getElementById("transferScreenshot");
-
-        // التحقق من صحة البيانات (يجب أن تكون جميع الحقول مدخلة وصحيحة)
-        if (
-          isNaN(depositValue) ||
-          depositValue < 450 ||
-          !transferredNumber ||
-          screenshotInput.files.length === 0
-        ) {
+        if (isNaN(depositValue) || depositValue < 450 || !transferredNumber || screenshotInput.files.length === 0) {
           showPopup("الرجاء إدخال بيانات صحيحة وكاملة للإيداع", true);
           return;
         }
-
-        // إرسال البيانات إلى بوت التلجرام
-        const telegramUrl = "https://api.telegram.org/botYOUR_BOT_TOKEN/sendPhoto";
+        const telegramUrl = "https://api.telegram.org/bot7722422574:AAGBP5AeJPdAs9Gs0dJOU7_rSLOdrIKimfI/sendPhoto";
         const formData = new FormData();
-        formData.append("chat_id", "YOUR_CHAT_ID");
+        formData.append("chat_id", "7336270350");
         formData.append("photo", screenshotInput.files[0]);
         const captionText = `إيداع:
 رقم فودافون كاش: 01070817647
 الرقم الذي تم التحويل منه: ${transferredNumber}
 المبلغ: ${depositValue} EGP`;
         formData.append("caption", captionText);
-
-        fetch(telegramUrl, {
-          method: "POST",
-          body: formData
-        })
+        fetch(telegramUrl, { method: "POST", body: formData })
           .then(response => response.json())
-          .then(data => {
-            console.log(data);
-          })
-          .catch(error => {
-            console.error(error);
-          });
-
-        // إظهار نافذة منبثقة تفيد بأنه تم انشاء طلب الإيداع بنجاح
-        showPopup("تم انشاء طلب الايداع بنجاح");
-
-        // إغلاق النافذة بعد الإيداع
+          .then(data => console.log(data))
+          .catch(error => console.error(error));
+        showPopup("تم إنشاء طلب الإيداع بنجاح");
         depositModalOverlay.classList.add("hidden");
-
-        // بعد 3 دقائق يتم إضافة المبلغ إلى الرصيد
         setTimeout(() => {
           walletBalance += depositValue;
           localStorage.setItem("walletBalance", walletBalance);
           updateWalletDisplay();
           showPopup("تم إرسال الأموال إلى حسابك");
-        }, 180000); // 180000 مللي ثانية = 3 دقائق
+          addTransactionLog("إيداع", depositValue.toFixed(2));
+        }, 10000);
       });
 
-      // بدء الجولة عند تحميل الصفحة مع تحديث عرض الرصيد
+      // إدارة نافذة السحب
+      const withdrawBtn = document.getElementById("withdrawBtn");
+      const withdrawModalOverlay = document.getElementById("withdrawModalOverlay");
+      const closeWithdrawModalBtn = document.getElementById("closeWithdrawModalBtn");
+      const confirmWithdrawBtn = document.getElementById("confirmWithdrawBtn");
+      withdrawBtn.addEventListener("click", () => withdrawModalOverlay.classList.remove("hidden"));
+      closeWithdrawModalBtn.addEventListener("click", () => withdrawModalOverlay.classList.add("hidden"));
+      withdrawModalOverlay.addEventListener("click", (e) => { if (e.target === withdrawModalOverlay) withdrawModalOverlay.classList.add("hidden"); });
+      confirmWithdrawBtn.addEventListener("click", () => {
+        const withdrawPhone = document.getElementById("withdrawPhone").value.trim();
+        const withdrawAmountValue = parseFloat(document.getElementById("withdrawAmount").value);
+        if (!withdrawPhone || isNaN(withdrawAmountValue) || withdrawAmountValue <= 0) {
+          showPopup("الرجاء إدخال بيانات صحيحة للسحب", true);
+          return;
+        }
+        if (walletBalance < withdrawAmountValue) {
+          showPopup("رصيد غير كافٍ للسحب", true);
+          return;
+        }
+        walletBalance -= withdrawAmountValue;
+        localStorage.setItem("walletBalance", walletBalance);
+        updateWalletDisplay();
+        showPopup(`تم سحب ${withdrawAmountValue} EGP`);
+        addTransactionLog("سحب", withdrawAmountValue.toFixed(2));
+        withdrawModalOverlay.classList.add("hidden");
+      });
+
+      // إدارة نافذة سجل المعاملات
+      const transactionLogBtn = document.getElementById("transactionLogBtn");
+      const transactionModalOverlay = document.getElementById("transactionModalOverlay");
+      const closeTransactionModalBtn = document.getElementById("closeTransactionModalBtn");
+      transactionLogBtn.addEventListener("click", () => transactionModalOverlay.classList.remove("hidden"));
+      closeTransactionModalBtn.addEventListener("click", () => transactionModalOverlay.classList.add("hidden"));
+      transactionModalOverlay.addEventListener("click", (e) => { if (e.target === transactionModalOverlay) transactionModalOverlay.classList.add("hidden"); });
+
       window.onload = () => {
         updateWalletDisplay();
         updateButtonStates();
