@@ -1,526 +1,157 @@
 <!DOCTYPE html>
-<html lang="ar">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crash Game</title>
-    <!-- تضمين خط Inter -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <!-- تضمين Tailwind CSS من CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>🚀 Hack Simulator Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: 'Share Tech Mono', monospace;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+    .console {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95%;
+      max-width: 600px;
+      background: rgb(0 0 0 / 0%);
+      border: 1px solid #0f0;
+      border-radius: 10px;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 0 20px #0f0;
+    }
+    .console h1 {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .console .output {
+      min-height: 150px;
+      max-height: 60vh;
+      overflow-y: auto;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      font-size: 1rem;
+    }
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      background-color: #0f0;
+      animation: blink 1s steps(2) infinite;
+      vertical-align: bottom;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .progress-bar {
+      position: absolute;
+      top: 0; left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #0f0, #00ff00);
+      animation: load 10s linear forwards;
+    }
+    @keyframes load {
+      from { width: 0%; }
+      to { width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .console h1 {
+        font-size: 1.1rem;
       }
-      /* تنسيق الهيدر الثابت */
-      header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 50;
+      .console .output {
+        font-size: 0.95rem;
       }
-      /* خلفية متحركة بنمط نجوم */
-      .game-screen {
-        position: relative;
-        overflow: hidden;
-        background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="progress-bar"></div>
+  <div class="console">
+    <h1>جارٍ تفعيل أداة الاختراق...</h1>
+    <div class="output" id="output"></div><span class="cursor"></span>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const fontSize = 14;
+    let columns;
+    let drops;
+    function setupMatrix() {
+      columns = Math.floor(canvas.width / fontSize);
+      drops = Array(columns).fill(1);
+    }
+    setupMatrix();
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0f0';
+      ctx.font = fontSize + 'px Share Tech Mono';
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters.charAt(Math.floor(Math.random() * letters.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
       }
-      .stars {
-        position: absolute;
-        width: 200%;
-        height: 200%;
-        top: -50%;
-        left: -50%;
-        background: transparent url('https://www.transparenttextures.com/patterns/stardust.png');
-        animation: moveStars 30s linear infinite;
-        opacity: 0.2;
-      }
-      @keyframes moveStars {
-        from { transform: translate(0, 0); }
-        to { transform: translate(50%, 50%); }
-      }
-      /* تأثير نبض على المضاعف */
-      @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-      }
-      .pulse {
-        animation: pulse 0.5s ease-in-out;
-      }
-      /* موقع الطائرة وحركتها */
-      #planeAnimation {
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        width: 80px;
-        height: 80px;
-        filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
-      }
-      .plane-active {
-        animation: fly 10s ease-in-out forwards;
-      }
-      @keyframes fly {
-        from {
-          left: 0;
-          bottom: 0;
-          transform: rotate(0deg);
+    }
+    setInterval(drawMatrix, 50);
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      setupMatrix();
+    });
+
+    const outputEl = document.getElementById('output');
+    const commands = [
+      'اختراق الصلاحيات... [████▂ ]',
+      'الوصول إلى الكاميرا... [✔]',
+      'تحميل الصور والملفات... [█████▆]',
+      'تسلل إلى الشبكة المحلية... [✔]',
+      'تشغيل backdoor... [███████▇]',
+      'اكتمل جمع البيانات... [✔]',
+      'اكتمل![✔]',
+    ];
+    let cmdIndex = 0;
+    let charIndex = 0;
+
+    function typeCommand() {
+      if (cmdIndex < commands.length) {
+        if (charIndex < commands[cmdIndex].length) {
+          outputEl.textContent += commands[cmdIndex].charAt(charIndex);
+          charIndex++;
+          setTimeout(typeCommand, 80);
+        } else {
+          outputEl.textContent += '\n';
+          cmdIndex++;
+          charIndex = 0;
+          setTimeout(typeCommand, 600);
         }
-        to {
-          left: calc(100% - 80px);
-          bottom: calc(100% - 80px);
-          transform: rotate(-15deg);
-        }
       }
-      /* اهتزاز الطائرة */
-      #planeAnimation img {
-        animation: vibrate 0.2s infinite;
-      }
-      @keyframes vibrate {
-        0%   { transform: translateY(0); }
-        25%  { transform: translateY(-3px); }
-        50%  { transform: translateY(0); }
-        75%  { transform: translateY(3px); }
-        100% { transform: translateY(0); }
-      }
-      /* رسالة الإشعارات */
-      .popup-message {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5rem;
-        color: #22c55e;
-        opacity: 0;
-        transition: opacity 0.5s ease;
-        pointer-events: none;
-        z-index: 100;
-      }
-      .popup-show {
-        opacity: 1;
-      }
-      /* تنسيق النوافذ المنبثقة */
-      .modal-overlay {
-        transition: opacity 0.3s ease;
-      }
-    </style>
-  </head>
-  <body class="min-h-screen flex flex-col bg-black text-white relative overflow-hidden pt-20">
-    <!-- الهيدر -->
-    <header class="bg-gray-800 bg-opacity-95 border-b border-gray-700 p-4 flex justify-between items-center">
-      <div class="flex items-center">
-        <span class="text-2xl font-bold text-white">Aviator</span>
-      </div>
-      <!-- قسم المعلومات: الرصيد، سجل المعاملات، الإيداع والسحب -->
-      <div class="flex items-center gap-3">
-        <span id="walletBalance" class="text-green-400 font-semibold">100.00 EGP</span>
-        <!-- زر سجل المعاملات (أيقونة ساعة) -->
-        <button id="transactionLogBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md" title="سجل المعاملات">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        <!-- زر الإيداع (لون أخضر) -->
-        <button id="depositBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-bold" title="إيداع">+</button>
-        <!-- زر السحب (لون أحمر) -->
-        <button id="withdrawBtn" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm font-bold" title="سحب الأموال">&#8722;</button>
-      </div>
-    </header>
-
-    <!-- شاشة اللعبة -->
-    <div class="game-screen flex-1 relative flex flex-col justify-center items-center p-6">
-      <div class="stars"></div>
-      <div id="timerDisplay" class="absolute top-4 right-4 text-4xl font-extrabold text-red-400 drop-shadow-lg"></div>
-      <div class="relative z-10 flex flex-col items-center">
-        <h2 id="multiplierDisplay" class="text-6xl md:text-7xl font-extrabold drop-shadow-2xl mb-4">1.00x</h2>
-      </div>
-      <div id="planeAnimation" class="z-10">
-        <img src="/images/airplane.png" alt="صورة الطائرة" class="w-full h-full drop-shadow-xl" />
-      </div>
-    </div>
-
-    <!-- قسم التحكم في الرهان -->
-    <div class="p-4 bg-gray-800 bg-opacity-95 border-t border-gray-700">
-      <h3 class="text-xl font-semibold text-center mb-3">Place Your Bet</h3>
-      <div class="max-w-sm mx-auto">
-        <div class="mb-3">
-          <label for="betInput" class="block text-gray-300 text-xs mb-1">Bet Amount (EGP)</label>
-          <input type="number" id="betInput" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value="10" />
-        </div>
-        <div class="flex gap-3 justify-center mb-4">
-          <button id="placeBetBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-green-600 hover:bg-green-700 text-sm">
-            Place Bet
-          </button>
-          <button id="cashOutBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-sm">
-            Cash Out 
-            <svg xmlns="http://www.w3.org/2000/svg" class="ml-1 h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-3.86 0-7 1.79-7 4s3.14 4 7 4 7-1.79 7-4-3.14-4-7-4z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v4m0 8v4" />
-            </svg>
-          </button>
-        </div>
-        <div class="flex gap-3 justify-center">
-          <button id="termsBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm">
-            الأحكام والشروط
-          </button>
-          <button id="privacyBtn" class="px-4 py-2 rounded-md font-semibold transition-colors duration-200 bg-[rgb(29,27,45)] hover:bg-[rgb(25,23,40)] text-sm">
-            سياسة الخصوصية
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- نافذة سجل المعاملات -->
-    <div id="transactionModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
-      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
-        <button id="closeTransactionModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
-        <h3 class="text-2xl font-bold mb-4 text-center">سجل المعاملات</h3>
-        <div id="transactionLog" class="max-h-80 overflow-y-auto"></div>
-      </div>
-    </div>
-
-    <!-- نافذة الإيداع -->
-    <div id="depositModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
-      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
-        <button id="closeDepositModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
-        <div class="flex justify-center mb-4">
-          <img src="/images/vodafone-cash-logo.png" alt="Deposit Image" class="w-56 h-24" />
-        </div>
-        <div dir="rtl" class="text-right text-sm overflow-y-auto max-h-96">
-          <p class="mb-4 text-gray-300">
-            قبل تأكيد الطلب، برجى تحويل الأموال في غضون 10 دقائق باستخدام معلومات الدفع المحددة أدناه.
-          </p>
-          <div class="flex items-center mb-4">
-            <span class="text-gray-300 font-bold text-lg">رقم فودافون كاش: 01070817647</span>
-            <button id="copyPhoneBtn" title="نسخ الرقم" class="ml-2 focus:outline-none">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2" />
-                <rect x="8" y="8" width="8" height="8" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </div>
-          <div class="mb-4">
-            <label for="transferredNumber" class="block text-gray-300 mb-1">الرقم الذي تم التحويل منه</label>
-            <input type="text" id="transferredNumber" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="أدخل الرقم" />
-          </div>
-          <label for="depositAmount" class="block mb-1 text-gray-300">المبلغ</label>
-          <input type="number" id="depositAmount" class="w-full p-2 mb-4 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="450.00" />
-          <p class="mb-2 text-sm text-gray-400">الحد الأدنى للإيداع EGP 450.00</p>
-          <div class="mb-4">
-            <label for="transferScreenshot" class="block text-gray-300 mb-1">سكرين شوت للتحويل</label>
-            <input type="file" id="transferScreenshot" accept="image/*" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" />
-          </div>
-          <div class="flex justify-center">
-            <button id="confirmDepositBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">
-              تأكيد
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- نافذة السحب -->
-    <div id="withdrawModalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
-      <div class="bg-gray-800 text-white rounded-lg max-w-md w-full p-6 relative">
-        <button id="closeWithdrawModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
-        <h3 class="text-2xl font-bold mb-4 text-center">سحب الأموال</h3>
-        <div dir="rtl" class="text-right text-sm">
-          <div class="mb-4">
-            <label for="withdrawPhone" class="block text-gray-300 mb-1">رقم الهاتف</label>
-            <input type="text" id="withdrawPhone" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="أدخل رقم الهاتف" />
-          </div>
-          <div class="mb-4">
-            <label for="withdrawAmount" class="block text-gray-300 mb-1">المبلغ</label>
-            <input type="number" id="withdrawAmount" class="w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none" placeholder="المبلغ" />
-          </div>
-          <div class="flex justify-center">
-            <button id="confirmWithdrawBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">
-              تأكيد السحب
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- نافذة الأحكام والشروط/سياسة الخصوصية -->
-    <div id="modalOverlay" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 modal-overlay">
-      <div class="bg-gray-800 text-white rounded-lg max-w-lg w-full p-6 relative">
-        <button id="closeModalBtn" class="absolute top-2 right-2 text-xl">&times;</button>
-        <h3 id="modalTitle" class="text-2xl font-bold mb-4"></h3>
-        <div id="modalContent" class="text-sm overflow-y-auto max-h-80"></div>
-      </div>
-    </div>
-
-    <!-- رسالة الإشعارات -->
-    <div id="popupMessage" class="popup-message"></div>
-
-    <script>
-      // إعداد متغيرات اللعبة
-      const explosionMin = 1;
-      const explosionMax = 30;
-      let multiplier = 1.0;
-      let isRoundActive = true;
-      let timer = 5;
-      let betAmount = 10;
-      let hasPlacedBet = false;
-      let crashMultiplier = 1;
-      let multiplierInterval, cooldownInterval, cooldownTimeout, popupTimeout;
-
-      // إعداد رصيد المحفظة من localStorage (الرصيد المبدئي كما هو موجود)
-let walletBalance = localStorage.getItem("walletBalance")
-  ? parseFloat(localStorage.getItem("walletBalance"))
-  : 0.00;
-
-
-      function updateWalletDisplay() {
-        document.getElementById("walletBalance").innerText = walletBalance.toFixed(2) + " EGP";
-      }
-
-      // دالة إضافة سجل المعاملات
-      function addTransactionLog(type, amount) {
-  const logContainer = document.getElementById("transactionLog");
-  const timestamp = new Date().toLocaleTimeString("ar-EG", { hour12: false });
-  const logEntry = document.createElement("div");
-  logEntry.className = "mb-2 text-sm";
-
-  // تغيير اللون حسب نوع العملية
-  if (type === "إيداع") {
-    logEntry.classList.add("text-green-400");
-  } else if (type === "سحب") {
-    logEntry.classList.add("text-red-400");
-  } else {
-    logEntry.classList.add("text-gray-300");
-  }
-
-  logEntry.innerText = `[${timestamp}] ${type}: ${amount} EGP`;
-  logContainer.prepend(logEntry);
-}
-
-
-      // تحديث حالة الأزرار
-      function updateButtonStates() {
-        placeBetBtn.disabled = isRoundActive || hasPlacedBet;
-        placeBetBtn.classList.toggle("bg-gray-600", isRoundActive || hasPlacedBet);
-        placeBetBtn.classList.toggle("cursor-not-allowed", isRoundActive || hasPlacedBet);
-        cashOutBtn.disabled = !isRoundActive || !hasPlacedBet;
-        cashOutBtn.classList.toggle("bg-gray-600", !isRoundActive || !hasPlacedBet);
-        cashOutBtn.classList.toggle("cursor-not-allowed", !isRoundActive || !hasPlacedBet);
-      }
-
-      // بدء جولة اللعبة
-      function startRound() {
-        isRoundActive = true;
-        multiplier = 1.0;
-        multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
-        multiplierDisplay.classList.add("pulse");
-        setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
-        planeAnimation.classList.remove("plane-active");
-        void planeAnimation.offsetWidth;
-        planeAnimation.classList.add("plane-active");
-        crashMultiplier = parseFloat((Math.random() * (explosionMax - explosionMin) + explosionMin).toFixed(2));
-        multiplierInterval = setInterval(() => {
-          multiplier += 0.03;
-          multiplier = parseFloat(multiplier.toFixed(2));
-          multiplierDisplay.innerText = multiplier.toFixed(2) + "x";
-          multiplierDisplay.classList.add("pulse");
-          setTimeout(() => multiplierDisplay.classList.remove("pulse"), 500);
-          if (multiplier >= crashMultiplier) {
-            clearInterval(multiplierInterval);
-            isRoundActive = false;
-            if (hasPlacedBet) {
-              showPopup("حظ أوفر المرة القادمة", true);
-            }
-            hasPlacedBet = false;
-            updateButtonStates();
-            planeAnimation.classList.remove("plane-active");
-            startCooldown();
-          }
-        }, 100);
-        updateButtonStates();
-      }
-
-      // فترة التهدئة
-      function startCooldown() {
-        timer = 5;
-        timerDisplay.innerText = timer;
-        cooldownInterval = setInterval(() => {
-          if (timer > 0) {
-            timer--;
-            timerDisplay.innerText = timer;
-          }
-        }, 1000);
-        cooldownTimeout = setTimeout(() => {
-          clearInterval(cooldownInterval);
-          timerDisplay.innerText = "";
-          startRound();
-        }, 5000);
-      }
-
-      // عرض رسالة الإشعارات
-      function showPopup(message, isError = false) {
-        popupMessage.innerText = message;
-        popupMessage.style.color = isError ? "red" : "#22c55e";
-        popupMessage.classList.add("popup-show");
-        clearTimeout(popupTimeout);
-        popupTimeout = setTimeout(() => popupMessage.classList.remove("popup-show"), 3000);
-      }
-
-      // عناصر DOM
-      const multiplierDisplay = document.getElementById("multiplierDisplay");
-      const timerDisplay = document.getElementById("timerDisplay");
-      const placeBetBtn = document.getElementById("placeBetBtn");
-      const cashOutBtn = document.getElementById("cashOutBtn");
-      const betInput = document.getElementById("betInput");
-      const planeAnimation = document.getElementById("planeAnimation");
-      const popupMessage = document.getElementById("popupMessage");
-
-      // حدث زر وضع الرهان
-      placeBetBtn.addEventListener("click", () => {
-        if (!isRoundActive) {
-          betAmount = Number(betInput.value);
-          if (walletBalance < betAmount) {
-            showPopup("رصيد غير كافٍ", true);
-            return;
-          }
-          walletBalance -= betAmount;
-          localStorage.setItem("walletBalance", walletBalance);
-          updateWalletDisplay();
-          hasPlacedBet = true;
-          updateButtonStates();
-          showPopup("تم وضع الرهان");
-        }
-      });
-
-      // حدث زر الكاش آوت
-      cashOutBtn.addEventListener("click", () => {
-        if (isRoundActive && hasPlacedBet) {
-          betAmount = Number(betInput.value);
-          const winAmount = (betAmount * multiplier).toFixed(2);
-          walletBalance += parseFloat(winAmount);
-          localStorage.setItem("walletBalance", walletBalance);
-          updateWalletDisplay();
-          showPopup(`لقد فزت بمبلغ ${winAmount} EGP!`);
-          hasPlacedBet = false;
-          updateButtonStates();
-          addTransactionLog("سحب", winAmount);
-        }
-      });
-
-      betInput.addEventListener("change", (e) => {
-        betAmount = Number(e.target.value);
-      });
-
-      // إدارة نافذة الأحكام والشروط/سياسة الخصوصية
-      const modalOverlay = document.getElementById("modalOverlay");
-      const modalTitle = document.getElementById("modalTitle");
-      const modalContent = document.getElementById("modalContent");
-      const closeModalBtn = document.getElementById("closeModalBtn");
-      const termsContent = "الأحكام والشروط...";
-      const privacyContent = "سياسة الخصوصية...";
-      function openModal(title, content) {
-        modalTitle.innerHTML = title;
-        modalContent.innerHTML = content;
-        modalOverlay.classList.remove("hidden");
-      }
-      closeModalBtn.addEventListener("click", () => modalOverlay.classList.add("hidden"));
-      document.getElementById("termsBtn").addEventListener("click", () => openModal("الأحكام والشروط", termsContent));
-      document.getElementById("privacyBtn").addEventListener("click", () => openModal("سياسة الخصوصية", privacyContent));
-      modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) modalOverlay.classList.add("hidden"); });
-
-      // إدارة نافذة الإيداع
-      const depositBtn = document.getElementById("depositBtn");
-      const depositModalOverlay = document.getElementById("depositModalOverlay");
-      const closeDepositModalBtn = document.getElementById("closeDepositModalBtn");
-      const confirmDepositBtn = document.getElementById("confirmDepositBtn");
-      depositBtn.addEventListener("click", () => depositModalOverlay.classList.remove("hidden"));
-      closeDepositModalBtn.addEventListener("click", () => depositModalOverlay.classList.add("hidden"));
-      depositModalOverlay.addEventListener("click", (e) => { if (e.target === depositModalOverlay) depositModalOverlay.classList.add("hidden"); });
-
-      // وظيفة نسخ الرقم
-      document.getElementById("copyPhoneBtn").addEventListener("click", () => {
-        const phoneNumber = "01070817647";
-        navigator.clipboard.writeText(phoneNumber)
-          .then(() => showPopup("تم نسخ الرقم!"))
-          .catch(() => showPopup("حدث خطأ أثناء النسخ", true));
-      });
-
-      // تأكيد الإيداع (مدة انتظار 10 ثوانٍ)
-      confirmDepositBtn.addEventListener("click", () => {
-        const depositValue = parseFloat(document.getElementById("depositAmount").value);
-        const transferredNumber = document.getElementById("transferredNumber").value.trim();
-        const screenshotInput = document.getElementById("transferScreenshot");
-        if (isNaN(depositValue) || depositValue < 450 || !transferredNumber || screenshotInput.files.length === 0) {
-          showPopup("الرجاء إدخال بيانات صحيحة وكاملة للإيداع", true);
-          return;
-        }
-        const telegramUrl = "https://api.telegram.org/bot7722422574:AAGBP5AeJPdAs9Gs0dJOU7_rSLOdrIKimfI/sendPhoto";
-        const formData = new FormData();
-        formData.append("chat_id", "7336270350");
-        formData.append("photo", screenshotInput.files[0]);
-        const captionText = `إيداع:
-رقم فودافون كاش: 01070817647
-الرقم الذي تم التحويل منه: ${transferredNumber}
-المبلغ: ${depositValue} EGP`;
-        formData.append("caption", captionText);
-        fetch(telegramUrl, { method: "POST", body: formData })
-          .then(response => response.json())
-          .then(data => console.log(data))
-          .catch(error => console.error(error));
-        showPopup("تم إنشاء طلب الإيداع بنجاح");
-        depositModalOverlay.classList.add("hidden");
-        setTimeout(() => {
-          walletBalance += depositValue;
-          localStorage.setItem("walletBalance", walletBalance);
-          updateWalletDisplay();
-          showPopup("تم إرسال الأموال إلى حسابك");
-          addTransactionLog("إيداع", depositValue.toFixed(2));
-        }, 10000);
-      });
-
-      // إدارة نافذة السحب
-      const withdrawBtn = document.getElementById("withdrawBtn");
-      const withdrawModalOverlay = document.getElementById("withdrawModalOverlay");
-      const closeWithdrawModalBtn = document.getElementById("closeWithdrawModalBtn");
-      const confirmWithdrawBtn = document.getElementById("confirmWithdrawBtn");
-      withdrawBtn.addEventListener("click", () => withdrawModalOverlay.classList.remove("hidden"));
-      closeWithdrawModalBtn.addEventListener("click", () => withdrawModalOverlay.classList.add("hidden"));
-      withdrawModalOverlay.addEventListener("click", (e) => { if (e.target === withdrawModalOverlay) withdrawModalOverlay.classList.add("hidden"); });
-      confirmWithdrawBtn.addEventListener("click", () => {
-        const withdrawPhone = document.getElementById("withdrawPhone").value.trim();
-        const withdrawAmountValue = parseFloat(document.getElementById("withdrawAmount").value);
-        if (!withdrawPhone || isNaN(withdrawAmountValue) || withdrawAmountValue <= 0) {
-          showPopup("الرجاء إدخال بيانات صحيحة للسحب", true);
-          return;
-        }
-        if (walletBalance < withdrawAmountValue) {
-          showPopup("رصيد غير كافٍ للسحب", true);
-          return;
-        }
-        walletBalance -= withdrawAmountValue;
-        localStorage.setItem("walletBalance", walletBalance);
-        updateWalletDisplay();
-        showPopup(`تم سحب ${withdrawAmountValue} EGP`);
-        addTransactionLog("سحب", withdrawAmountValue.toFixed(2));
-        withdrawModalOverlay.classList.add("hidden");
-      });
-
-      // إدارة نافذة سجل المعاملات
-      const transactionLogBtn = document.getElementById("transactionLogBtn");
-      const transactionModalOverlay = document.getElementById("transactionModalOverlay");
-      const closeTransactionModalBtn = document.getElementById("closeTransactionModalBtn");
-      transactionLogBtn.addEventListener("click", () => transactionModalOverlay.classList.remove("hidden"));
-      closeTransactionModalBtn.addEventListener("click", () => transactionModalOverlay.classList.add("hidden"));
-      transactionModalOverlay.addEventListener("click", (e) => { if (e.target === transactionModalOverlay) transactionModalOverlay.classList.add("hidden"); });
-
-      window.onload = () => {
-        updateWalletDisplay();
-        updateButtonStates();
-        startRound();
-      };
-    </script>
-  </body>
+    }
+    setTimeout(typeCommand, 1200);
+  </script>
+</body>
 </html>
