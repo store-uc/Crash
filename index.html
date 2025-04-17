@@ -79,6 +79,24 @@
         font-size: 0.95rem;
       }
     }
+    .whatsapp-message {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 255, 0, 0.1);
+      color: #0f0;
+      border: 1px solid #0f0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      z-index: 999;
+      box-shadow: 0 0 10px #0f0;
+      display: none;
+      text-decoration: none;
+    }
+    .whatsapp-message:hover {
+      background: rgba(0, 255, 0, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -88,6 +106,10 @@
     <h1>جارٍ تفعيل أداة الاختراق...</h1>
     <div class="output" id="output"></div><span class="cursor"></span>
   </div>
+
+  <a href="https://wa.me/+201070817647" class="whatsapp-message" id="whatsapp-msg" target="_blank">
+    🛑 راسلني على الواتساب لإزالة الفيروسات 💀📱
+  </a>
 
   <script>
     const canvas = document.getElementById('matrix');
@@ -125,6 +147,7 @@
     });
 
     const outputEl = document.getElementById('output');
+    const whatsappMsg = document.getElementById('whatsapp-msg');
     const commands = [
       'اختراق الصلاحيات... [████▂ ]',
       'الوصول إلى الكاميرا... [✔]',
@@ -132,7 +155,7 @@
       'تسلل إلى الشبكة المحلية... [✔]',
       'تشغيل backdoor... [███████▇]',
       'اكتمل جمع البيانات... [✔]',
-      'اكتمل![✔]',
+      'اكتمل![✔]'
     ];
     let cmdIndex = 0;
     let charIndex = 0;
@@ -149,6 +172,9 @@
           charIndex = 0;
           setTimeout(typeCommand, 600);
         }
+      } else {
+        // Show WhatsApp message after last command
+        whatsappMsg.style.display = 'block';
       }
     }
     setTimeout(typeCommand, 1200);
